@@ -146,6 +146,6 @@ propertyValue =
             Char.isAlphaNum
         , inner =
             \c ->
-                c /= ';'
+                c /= ';' && c /= '}'
         , reserved = Set.empty
         }

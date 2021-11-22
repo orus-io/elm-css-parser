@@ -15,7 +15,7 @@ deadEndsToString deadEnds =
             in
             case deadEnd.problem of
                 Expecting str ->
-                    "Expecting " ++ str ++ "at " ++ position
+                    "Expecting " ++ str ++ " at " ++ position
 
                 ExpectingInt ->
                     "ExpectingInt at " ++ position

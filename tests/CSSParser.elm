@@ -23,26 +23,37 @@ testRun expects s =
                 "ERROR: " ++ deadEndsToString deadends
 
 
-simpleTest : String -> String -> Test
-simpleTest title s =
+identityTest : String -> String -> Test
+identityTest title s =
     test title <|
         \_ ->
             testRunSimple s
 
 
+parseAndRenderTest : String -> String -> String -> Test
+parseAndRenderTest title expects s =
+    test title <|
+        \_ ->
+            testRun expects s
+
+
 suite : Test
 suite =
     describe "The CSS.Parser module"
-        [ simpleTest
+        [ identityTest
             "no properties"
             "body {}"
-        , simpleTest
+        , identityTest
             "one property"
             "body {\n  height: 100%;\n}"
-        , simpleTest
+        , parseAndRenderTest
+            "no trailing ;"
+            "body {\n  height: 100px;\n}"
+            "body {\n  height: 100px}"
+        , identityTest
             "multiple properties"
             "body {\n  height: 100%;\n  width: 40em;\n}"
-        , simpleTest
+        , identityTest
             "multiple blocks"
             """html {
   height: 100%;
@@ -53,7 +64,7 @@ body {
   height: 100%;
   width: 40em;
 }"""
-        , simpleTest
+        , identityTest
             "complex selectors"
             """a.button:hover, a.button#annoying-button {
   background-color: gray;
