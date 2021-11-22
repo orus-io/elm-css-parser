@@ -1,7 +1,6 @@
 module CSSParser exposing (..)
 
-import CSS.Parser exposing (run)
-import CSS.Parser.Util exposing (toString)
+import CSS.Parser exposing (run, toString)
 import Expect exposing (Expectation)
 import Test exposing (..)
 import Utils exposing (deadEndsToString)

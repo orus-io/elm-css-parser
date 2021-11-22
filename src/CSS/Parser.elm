@@ -1,7 +1,7 @@
 module CSS.Parser exposing
     ( run
     , Block, Property
-    , parser
+    , parser, toString, toStringCustom
     )
 
 {-|
@@ -19,7 +19,7 @@ module CSS.Parser exposing
 If you are building a parser of your own using elm/parser and you need to
 parse HTML... This section is for you!
 
-@docs parser
+@docs parser, toString, toStringCustom
 
 -}
 
@@ -183,3 +183,51 @@ propertyValue =
                 c /= ';' && c /= '}'
         , reserved = Set.empty
         }
+
+
+{-| Turn a list of rules into a string, with custom indent and rule separator
+-}
+toStringCustom :
+    { indent : String
+    , blockSeparator : String
+    }
+    -> List Block
+    -> String
+toStringCustom settings =
+    List.map (blockToString settings.indent)
+        >> String.join settings.blockSeparator
+
+
+{-| Turn a list of rules into a string
+-}
+toString : List Block -> String
+toString =
+    toStringCustom { indent = "  ", blockSeparator = "\n\n" }
+
+
+blockToString : String -> Block -> String
+blockToString indent b =
+    String.join ", " b.selectors
+        ++ " "
+        ++ propertyBlockToString indent b.properties
+
+
+propertyBlockToString : String -> List Property -> String
+propertyBlockToString indent properties =
+    case properties of
+        [] ->
+            "{}"
+
+        _ ->
+            "{\n"
+                ++ indent
+                ++ (properties
+                        |> List.map propertyToString
+                        |> String.join ("\n" ++ indent)
+                   )
+                ++ "\n}"
+
+
+propertyToString : Property -> String
+propertyToString ( name, value ) =
+    name ++ ": " ++ value ++ ";"
