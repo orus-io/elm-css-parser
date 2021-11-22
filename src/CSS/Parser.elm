@@ -1,4 +1,27 @@
-module CSS.Parser exposing (Block, Property, run)
+module CSS.Parser exposing
+    ( run
+    , Block, Property
+    , parser
+    )
+
+{-|
+
+@docs run
+
+
+# Data
+
+@docs Block, Property
+
+
+# Internals
+
+If you are building a parser of your own using elm/parser and you need to
+parse HTML... This section is for you!
+
+@docs parser
+
+-}
 
 import Char
 import Parser
@@ -21,21 +44,32 @@ import Parser
 import Set
 
 
+{-| A CSS Rule
+-}
 type alias Block =
     { selectors : List String
     , properties : List Property
     }
 
 
+{-| A CSS property (a declaration)
+-}
 type alias Property =
     ( String, String )
 
 
+{-| Parse CSS stylesheet. See <https://www.w3.org/TR/css-syntax-3/#parser-diagrams>
+-}
 run : String -> Result (List DeadEnd) (List Block)
 run =
     Parser.run parser
 
 
+{-| Parse a CSS stylesheet.
+
+You can use this in your own parser to parse CSS parts
+
+-}
 parser : Parser (List Block)
 parser =
     blocks
