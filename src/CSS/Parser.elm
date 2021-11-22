@@ -1,7 +1,7 @@
 module CSS.Parser exposing
     ( run
-    , Block, Property
-    , parser, toString, toStringCustom
+    , Stylesheet, Rule, Declaration
+    , stylesheet, toString, toStringCustom
     )
 
 {-|
@@ -11,7 +11,7 @@ module CSS.Parser exposing
 
 # Data
 
-@docs Block, Property
+@docs Stylesheet, Rule, Declaration
 
 
 # Internals
@@ -19,7 +19,7 @@ module CSS.Parser exposing
 If you are building a parser of your own using elm/parser and you need to
 parse HTML... This section is for you!
 
-@docs parser, toString, toStringCustom
+@docs stylesheet, toString, toStringCustom
 
 -}
 
@@ -44,25 +44,31 @@ import Parser
 import Set
 
 
+{-| A CSS Stylesheet
+-}
+type alias Stylesheet =
+    List Rule
+
+
 {-| A CSS Rule
 -}
-type alias Block =
+type alias Rule =
     { selectors : List String
-    , properties : List Property
+    , properties : List Declaration
     }
 
 
-{-| A CSS property (a declaration)
+{-| A CSS declaration
 -}
-type alias Property =
+type alias Declaration =
     ( String, String )
 
 
 {-| Parse CSS stylesheet. See <https://www.w3.org/TR/css-syntax-3/#parser-diagrams>
 -}
-run : String -> Result (List DeadEnd) (List Block)
+run : String -> Result (List DeadEnd) Stylesheet
 run =
-    Parser.run parser
+    Parser.run stylesheet
 
 
 {-| Parse a CSS stylesheet.
@@ -70,32 +76,27 @@ run =
 You can use this in your own parser to parse CSS parts
 
 -}
-parser : Parser (List Block)
-parser =
-    blocks
+stylesheet : Parser Stylesheet
+stylesheet =
+    loop [] stylesheetHelp
 
 
-blocks : Parser (List Block)
-blocks =
-    loop [] blocksHelp
-
-
-blocksHelp : List Block -> Parser (Step (List Block) (List Block))
-blocksHelp revBlocks =
+stylesheetHelp : Stylesheet -> Parser (Step Stylesheet Stylesheet)
+stylesheetHelp revBlocks =
     oneOf
         [ succeed (\b -> Loop (b :: revBlocks))
-            |= block
+            |= rule
             |. spaces
         , succeed ()
             |> map (\_ -> Done (List.reverse revBlocks))
         ]
 
 
-block : Parser Block
-block =
-    succeed Block
+rule : Parser Rule
+rule =
+    succeed Rule
         |= selectors
-        |= propertyBlock
+        |= block
 
 
 selectors : Parser (List String)
@@ -139,8 +140,8 @@ selector =
         }
 
 
-propertyBlock : Parser (List Property)
-propertyBlock =
+block : Parser (List Declaration)
+block =
     sequence
         { start = "{"
         , separator = ";"
@@ -151,7 +152,7 @@ propertyBlock =
         }
 
 
-property : Parser Property
+property : Parser Declaration
 property =
     succeed Tuple.pair
         |= propertyName
@@ -185,34 +186,34 @@ propertyValue =
         }
 
 
-{-| Turn a list of rules into a string, with custom indent and rule separator
+{-| Turn a stylesheet into a string, with custom indent and rule separator
 -}
 toStringCustom :
     { indent : String
     , blockSeparator : String
     }
-    -> List Block
+    -> Stylesheet
     -> String
 toStringCustom settings =
     List.map (blockToString settings.indent)
         >> String.join settings.blockSeparator
 
 
-{-| Turn a list of rules into a string
+{-| Turn a stylesheet into a string
 -}
-toString : List Block -> String
+toString : Stylesheet -> String
 toString =
     toStringCustom { indent = "  ", blockSeparator = "\n\n" }
 
 
-blockToString : String -> Block -> String
+blockToString : String -> Rule -> String
 blockToString indent b =
     String.join ", " b.selectors
         ++ " "
         ++ propertyBlockToString indent b.properties
 
 
-propertyBlockToString : String -> List Property -> String
+propertyBlockToString : String -> List Declaration -> String
 propertyBlockToString indent properties =
     case properties of
         [] ->
@@ -228,6 +229,6 @@ propertyBlockToString indent properties =
                 ++ "\n}"
 
 
-propertyToString : Property -> String
+propertyToString : Declaration -> String
 propertyToString ( name, value ) =
     name ++ ": " ++ value ++ ";"

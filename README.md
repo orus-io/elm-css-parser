@@ -9,6 +9,6 @@ import CSS.Parser
 parsed = CSS.Parser.run "body { background: white }"
 -- => Ok [{ properties = [("background","white ")], selectors = ["body"] }]
 
-Result.map CSS.Parser.Util.toString parsed
+Result.map CSS.Parser.toString parsed
 -- => Ok ("body {\n  background: white ;\n}")
 ```
