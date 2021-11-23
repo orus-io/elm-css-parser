@@ -68,4 +68,71 @@ body {
             """a.button:hover, a.button#annoying-button {
   background-color: gray;
 }"""
+        , parseAndRenderTest
+            "leading spaces"
+            "body {}"
+            " body {}"
+        , parseAndRenderTest
+            "head comment"
+            """html {}"""
+            """
+/*
+a comment
+*/
+html {}
+"""
+        , parseAndRenderTest
+            "tail comment"
+            """html {}"""
+            """
+html {}
+/*
+a comment
+*/
+"""
+        , parseAndRenderTest
+            "comment between rules"
+            """html {}
+
+body {}"""
+            """
+html {}
+/*
+a comment
+*/
+body {}
+"""
+        , parseAndRenderTest
+            "comment in block"
+            """html {
+  background-color: gray;
+  color: gray;
+}
+
+body {}"""
+            """
+html {
+    /* head */
+  background-color: gray;
+  /* in */
+  color: gray;
+  /* tail */
+}
+body {}
+"""
+        , parseAndRenderTest
+            "comment in declaration"
+            """html {
+  background-color: gray ;
+  color: gray;
+}
+
+body {}"""
+            """
+html {
+  background-color /* before column */:/* after column */ gray ;
+  color: gray;
+}
+body {}
+"""
         ]

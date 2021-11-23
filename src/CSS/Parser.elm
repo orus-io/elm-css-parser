@@ -29,11 +29,17 @@ import Parser
         ( (|.)
         , (|=)
         , DeadEnd
+        , Nestable(..)
         , Parser
         , Step(..)
         , Trailing(..)
+        , chompUntil
+        , chompWhile
+        , getChompedString
+        , getOffset
         , loop
         , map
+        , multiComment
         , oneOf
         , sequence
         , spaces
@@ -71,6 +77,29 @@ run =
     Parser.run stylesheet
 
 
+comments : Parser ()
+comments =
+    loop 0 <|
+        ifProgress <|
+            oneOf
+                [ multiComment "/*" "*/" NotNestable
+                    |. symbol "*/"
+                , chompWhile
+                    (\c ->
+                        (c == ' ')
+                            || (c == '\n')
+                            || (c == '\t')
+                            || (c == '\u{000D}')
+                    )
+                ]
+
+
+commentsOrSpace : Parser ()
+commentsOrSpace =
+    comments
+        |. spaces
+
+
 {-| Parse a CSS stylesheet.
 
 You can use this in your own parser to parse CSS parts
@@ -78,7 +107,9 @@ You can use this in your own parser to parse CSS parts
 -}
 stylesheet : Parser Stylesheet
 stylesheet =
-    loop [] stylesheetHelp
+    succeed identity
+        |. commentsOrSpace
+        |= loop [] stylesheetHelp
 
 
 stylesheetHelp : Stylesheet -> Parser (Step Stylesheet Stylesheet)
@@ -86,9 +117,8 @@ stylesheetHelp revBlocks =
     oneOf
         [ succeed (\b -> Loop (b :: revBlocks))
             |= rule
-            |. spaces
-        , succeed ()
-            |> map (\_ -> Done (List.reverse revBlocks))
+            |. commentsOrSpace
+        , succeed (Done (List.reverse revBlocks))
         ]
 
 
@@ -109,18 +139,6 @@ selectors =
         , item = selector
         , trailing = Forbidden
         }
-
-
-selectorsHelp : List String -> Parser (Step (List String) (List String))
-selectorsHelp revSelectors =
-    oneOf
-        [ succeed (\s -> Loop (s :: revSelectors))
-            |= selector
-            |. spaces
-            |. symbol ","
-        , succeed ()
-            |> map (\_ -> Done (List.reverse revSelectors))
-        ]
 
 
 selector : Parser String
@@ -146,24 +164,24 @@ block =
         { start = "{"
         , separator = ";"
         , end = "}"
-        , spaces = spaces
-        , item = property
+        , spaces = commentsOrSpace
+        , item = declaration
         , trailing = Optional
         }
 
 
-property : Parser Declaration
-property =
+declaration : Parser Declaration
+declaration =
     succeed Tuple.pair
-        |= propertyName
-        |. spaces
+        |= identToken
+        |. commentsOrSpace
         |. symbol ":"
-        |. spaces
-        |= propertyValue
+        |. commentsOrSpace
+        |= componentValue
 
 
-propertyName : Parser String
-propertyName =
+identToken : Parser String
+identToken =
     variable
         { start =
             Char.isAlphaNum
@@ -174,8 +192,8 @@ propertyName =
         }
 
 
-propertyValue : Parser String
-propertyValue =
+componentValue : Parser String
+componentValue =
     variable
         { start =
             Char.isAlphaNum
@@ -184,6 +202,21 @@ propertyValue =
                 c /= ';' && c /= '}'
         , reserved = Set.empty
         }
+
+
+ifProgress : Parser a -> Int -> Parser (Step Int ())
+ifProgress parser offset =
+    succeed identity
+        |. parser
+        |= getOffset
+        |> map
+            (\newOffset ->
+                if offset == newOffset then
+                    Done ()
+
+                else
+                    Loop newOffset
+            )
 
 
 {-| Turn a stylesheet into a string, with custom indent and rule separator
